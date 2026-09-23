@@ -13,22 +13,22 @@ The platform transforms raw point-of-sale (POS) transaction records into **store
 
 Generates store-level forecasts from **1 to 30 days ahead** for:
 
-- **Hourly Transaction Volume** — labor and staffing planning
+- **Hourly Transaction Volume** — labor scheduling and customer-footfall planning
 - **Gross Revenue** — financial and operational planning
 
 ### Asymmetric Risk Bounds
 
 Quantile LightGBM models generate three demand scenarios:
 
-| Quantile | Purpose |
-|---|---|
-| $\alpha = 0.10$ | Minimum demand / reserve boundary |
-| $\alpha = 0.50$ | Median operational target |
-| $\alpha = 0.90$ | Surge and safety-stock boundary |
+| Quantile | Operational Meaning |
+|:---:|:---|
+| **α = 0.10** | Lower demand / minimum reserve boundary |
+| **α = 0.50** | Median demand / operational target |
+| **α = 0.90** | Upper demand / surge safety boundary |
 
 ### Intraday Peak Detection
 
-Identifies high-demand periods using the top 25% of observed demand and specifically evaluates:
+Evaluates the highest-demand periods to identify operational rush windows:
 
 - **Morning rush:** 07:00–10:00
 - **Lunch rush:** 12:00–14:00
@@ -36,11 +36,11 @@ Identifies high-demand periods using the top 25% of observed demand and specific
 
 ### Continuous Time-Series Resampling
 
-Automatically constructs fixed **1-hour temporal grids** and handles silent or non-trading intervals to reduce distortions caused by irregular transaction timestamps.
+Automatically constructs fixed **1-hour temporal grids** and handles silent or non-trading intervals to reduce distortions caused by irregular POS transaction timestamps.
 
 ### Interactive Decision Dashboard
 
-Built with **Streamlit** and **Plotly**, providing:
+Built with **Streamlit** and **Plotly**, featuring:
 
 - Interactive forecast charts
 - 80% forecast intervals
@@ -132,7 +132,7 @@ afficionado-forecasting/
                    │                  ┌───────┼────────┐
                    │                  │       │        │
                    │                  ▼       ▼        ▼
-                   │               α=0.10  α=0.50   α=0.90
+                   │               α = .10 α = .50  α = .90
                    │               Minimum  Target   Surge
                    │               Reserve           Buffer
                    │
@@ -149,68 +149,72 @@ afficionado-forecasting/
 
 # Feature Engineering
 
-The forecasting engine creates temporal and autoregressive features from the hourly POS data.
+The forecasting engine creates temporal, autoregressive, and volatility features from the hourly POS data.
 
 ## Cyclical Time Features
 
-Time-of-day and day-of-week variables are represented using cyclical transformations:
+Time-of-day and day-of-week variables are represented using cyclical transformations.
 
-$$
-\text{hour\_sin} =
-\sin\left(\frac{2\pi \cdot hour}{24}\right)
-$$
+This allows the model to recognize that time is periodic. For example, **23:00 and 00:00 are neighboring points in the daily cycle** rather than completely unrelated values.
 
-$$
-\text{hour\_cos} =
-\cos\left(\frac{2\pi \cdot hour}{24}\right)
-$$
+### Hour of Day
 
-$$
-\text{dow\_sin} =
-\sin\left(\frac{2\pi \cdot dow}{7}\right)
-$$
+```text
+hour_sin = sin(2π × hour / 24)
 
-$$
-\text{dow\_cos} =
-\cos\left(\frac{2\pi \cdot dow}{7}\right)
-$$
+hour_cos = cos(2π × hour / 24)
+```
 
-These transformations allow the models to represent the cyclical relationship between adjacent hours and days.
+### Day of Week
+
+```text
+dow_sin = sin(2π × dow / 7)
+
+dow_cos = cos(2π × dow / 7)
+```
+
+---
 
 ## Autoregressive Features
 
-The model uses historical demand at several temporal scales:
+Historical demand is incorporated at multiple temporal scales.
 
-| Feature | Meaning |
-|---|---|
+| Feature | Description |
+|:---|:---|
 | `lag_1` | Previous hour |
 | `lag_24` | Same hour on the previous day |
 | `lag_168` | Same hour one week earlier |
 
-## Rolling Features
+These features allow the model to capture immediate, daily, and weekly demand patterns.
 
-Rolling statistics capture recent demand level and volatility:
+---
+
+## Rolling Statistics
+
+Rolling statistics capture recent demand levels and volatility.
 
 | Window | Features |
-|---|---|
-| 24 hours | Mean and standard deviation |
-| 168 hours | Mean and standard deviation |
+|:---:|:---|
+| **24 hours** | Rolling mean and standard deviation |
+| **168 hours** | Rolling mean and standard deviation |
 
 ---
 
 # Forecasting Models
 
-The system compares three forecasting approaches.
+The system evaluates three forecasting approaches.
 
 ## 1. Naive Persistence Baseline
 
-Uses the corresponding historical period from the previous week as the forecast.
+The baseline uses the corresponding historical period from the previous week as the forecast.
 
-This provides a simple benchmark for determining whether more advanced models provide meaningful improvements.
+This provides a simple benchmark for evaluating whether more advanced models produce meaningful improvements.
+
+---
 
 ## 2. SARIMAX
 
-The statistical forecasting engine uses:
+The statistical forecasting engine uses a seasonal SARIMAX configuration:
 
 ```text
 SARIMAX
@@ -219,17 +223,24 @@ SARIMAX
 
 The seasonal component captures recurring 24-hour demand patterns.
 
+---
+
 ## 3. Quantile LightGBM
 
-The primary machine-learning engine uses LightGBM quantile regression to estimate multiple points of the conditional demand distribution.
+The machine-learning forecasting engine uses LightGBM quantile regression to estimate multiple points of the conditional demand distribution.
 
 ```text
-α = 0.10  →  Lower demand boundary
-α = 0.50  →  Median forecast
-α = 0.90  →  Upper demand / surge boundary
+α = 0.10
+Lower demand boundary
+
+α = 0.50
+Median operational forecast
+
+α = 0.90
+Upper demand / surge boundary
 ```
 
-This allows operational decisions to account for uncertainty rather than relying only on a single point forecast.
+Instead of producing only a single prediction, the model provides a range of possible demand levels that can be used for operational planning.
 
 ---
 
@@ -241,27 +252,25 @@ The primary operational metric is **Weighted Absolute Percentage Error (wMAPE)**
 
 ## wMAPE
 
-$$
-\text{wMAPE}
-=
-\frac{
-\sum_t |y_t-\hat{y}_t|
-}{
-\sum_t y_t
-}
-\times 100
-$$
-
-Where:
-
-- $y_t$ = actual demand
-- $\hat{y}_t$ = predicted demand
+```text
+wMAPE =
+    Σ |actual demand - predicted demand|
+    ----------------------------------- × 100
+            Σ actual demand
+```
 
 The corresponding accuracy measure is:
 
-$$
-\text{Accuracy} = 100 - \text{wMAPE}
-$$
+```text
+Accuracy = 100 - wMAPE
+```
+
+Where:
+
+- `actual demand` = observed demand
+- `predicted demand` = model forecast
+
+---
 
 ## Benchmark Results
 
@@ -287,9 +296,11 @@ Users can filter forecasts by individual retail locations, including examples su
 - Astoria
 - Hell's Kitchen
 
+---
+
 ## Dual Target Modes
 
-The dashboard supports two forecasting targets:
+The dashboard supports two primary forecasting targets:
 
 ```text
 revenue
@@ -313,73 +324,86 @@ Used for:
 - Capacity planning
 - Intraday rush preparation
 
+---
+
 ## Algorithm Comparison
 
-The dashboard allows users to compare:
+The dashboard supports comparison between:
 
 ```text
 Naive Baseline
-       │
-       ├── Historical benchmark
-       │
+        │
+        └── Historical benchmark
+
 SARIMAX
-       │
-       ├── Statistical forecast
-       │
+        │
+        └── Statistical forecast
+
 Quantile LightGBM
-       │
-       ├── α = 0.10
-       ├── α = 0.50
-       └── α = 0.90
+        │
+        ├── α = 0.10
+        ├── α = 0.50
+        └── α = 0.90
 ```
 
-## Visual Forecast Bands
+---
 
-The $\alpha = 0.10$ and $\alpha = 0.90$ predictions form an approximate **80% forecast interval** around the median forecast.
+# Forecast Confidence Band
+
+The α = 0.10 and α = 0.90 forecasts provide an approximate **80% prediction interval** around the median forecast.
 
 ```text
-High Demand
-    │
-    │        α = 0.90
-    │       ┌─────────────
-    │      /              \
-    │     /   Forecast     \
-    │    /    Interval      \
-    │   /                    \
-    │  ───── α = 0.50 ────────
-    │
-    │       α = 0.10
-    │  ───────────────────────
-    │
-    └──────────────────────────── Time
+Demand
+  │
+  │              α = 0.90
+  │             ╱─────────────╲
+  │            ╱               ╲
+  │           ╱                 ╲
+  │          ╱   Forecast       ╲
+  │         ╱     Interval       ╲
+  │        ───── α = 0.50 ────────
+  │
+  │       α = 0.10
+  │      ─────────────────────────
+  │
+  └────────────────────────────────── Time
 ```
+
+This allows operators to distinguish between normal expected demand and potential demand surges.
 
 ---
 
 # Diurnal Demand Heatmap
 
-The dashboard provides an hour-of-day versus day-of-week demand heatmap.
+The dashboard provides an hour-of-day versus day-of-week heatmap.
 
 ```text
-                 DAY OF WEEK
-             Mon Tue Wed Thu Fri Sat Sun
-           ┌─────────────────────────────┐
-00:00      │                             │
-01:00      │                             │
-02:00      │                             │
-...        │        Demand Intensity     │
-07:00      │       ███████████           │
-08:00      │       ███████████████       │
-09:00      │       ████████████          │
-12:00      │       █████████████         │
-13:00      │       ███████████           │
-14:00      │       ███████               │
-...        │                             │
-23:00      │                             │
-           └─────────────────────────────┘
+                   DAY OF WEEK
+              Mon Tue Wed Thu Fri Sat Sun
+            ┌─────────────────────────────┐
+  00:00     │                             │
+  01:00     │                             │
+  02:00     │                             │
+  03:00     │                             │
+  04:00     │                             │
+  05:00     │                             │
+  06:00     │                             │
+  07:00     │        ███████████          │
+  08:00     │        ███████████████      │
+  09:00     │        ████████████         │
+  10:00     │        █████████            │
+  11:00     │        █████████            │
+  12:00     │        █████████████        │
+  13:00     │        ███████████          │
+  14:00     │        ███████              │
+  15:00     │        █████                │
+  16:00     │        █████                │
+  ...       │                             │
+  23:00     │                             │
+            └─────────────────────────────┘
 ```
 
-This visualization helps identify recurring intraday and weekly demand patterns.
+The heatmap helps identify recurring demand patterns for staffing and preparation planning.
 
 ---
 
@@ -387,13 +411,12 @@ This visualization helps identify recurring intraday and weekly demand patterns.
 
 The dashboard produces daily expected demand totals and can apply an operational safety-stock buffer.
 
-Example:
-
 ```text
 Expected Demand
        │
        ▼
-Median Forecast (α = 0.50)
+Median Forecast
+α = 0.50
        │
        ▼
 Safety Stock Adjustment
@@ -421,7 +444,7 @@ The expected POS dataset contains the following fields:
 | `store_location` | String | Physical branch name |
 | `product_category` | String | Product classification |
 
-Example product categories include:
+Example product categories:
 
 ```text
 Espresso
@@ -544,7 +567,7 @@ http://localhost:8501
 
 ## Split-Shift Scheduling
 
-Use the observed demand patterns to align barista staffing with high-volume periods.
+Use observed demand patterns to align barista staffing with high-volume periods.
 
 Primary rush windows:
 
@@ -562,7 +585,7 @@ The lower-demand period around **14:00–16:00** can be evaluated when optimizin
 
 ## Asymmetric Ordering
 
-Different inventory categories can be managed according to their perishability and demand uncertainty.
+Different inventory categories can be managed according to perishability and demand uncertainty.
 
 ### High-Spoilage Items
 
@@ -572,7 +595,7 @@ Examples:
 - Dairy alternatives
 - Fresh pastries
 
-The operational baseline can use the median:
+The operational baseline can use:
 
 ```text
 α = 0.50
@@ -586,17 +609,24 @@ Examples:
 - Cups
 - Syrups
 
-These can be planned closer to the upper demand boundary:
+These can be planned closer to:
 
 ```text
 α = 0.90
 ```
 
-The appropriate inventory policy should ultimately be determined using actual shelf life, supplier lead times, service-level requirements, and holding costs.
+The appropriate inventory policy should ultimately consider:
+
+- Shelf life
+- Supplier lead times
+- Service-level requirements
+- Holding costs
+- Historical spoilage
+- Storage capacity
 
 ---
 
-## Automated Replenishment
+# Automated Replenishment
 
 The system can provide **7-day store-level forecasts** to support:
 
@@ -626,9 +656,7 @@ Store Replenishment
 
 ---
 
-# Forecasting Workflow
-
-The complete system operates through the following workflow:
+# Complete Forecasting Workflow
 
 ```text
 ┌──────────────────────┐
@@ -666,7 +694,7 @@ The complete system operates through the following workflow:
          │              ┌─────────┼─────────┐
          │              │         │         │
          │              ▼         ▼         ▼
-         │            α=0.10   α=0.50    α=0.90
+         │            α = .10   α = .50   α = .90
          │
          └───────────────┬───────────────┘
                          │
@@ -677,7 +705,7 @@ The complete system operates through the following workflow:
               │ MAE                 │
               │ RMSE                │
               │ wMAPE               │
-              │ Peak Error          │
+              │ Peak Demand Error   │
               └──────────┬──────────┘
                          │
                          ▼
@@ -690,15 +718,13 @@ The complete system operates through the following workflow:
 
 # Model Evaluation Metrics
 
-The system tracks multiple performance indicators.
-
 | Metric | Purpose |
 |:---|:---|
-| **MAE** | Average absolute prediction error |
+| **MAE** | Measures average absolute prediction error |
 | **RMSE** | Penalizes larger prediction errors |
-| **wMAPE** | Weighted percentage forecasting error |
-| **Peak Demand Error** | Measures performance during high-demand periods |
-| **Overall Accuracy** | Derived from `100 - wMAPE` |
+| **wMAPE** | Measures weighted percentage forecasting error |
+| **Peak Demand Error** | Evaluates performance during high-demand periods |
+| **Overall Accuracy** | Calculated as `100 - wMAPE` |
 
 ---
 
@@ -721,40 +747,24 @@ Lower Boundary
 α = 0.10
       │
       ▼
-   420 transactions
+420 transactions
+
 
 Median Forecast
 α = 0.50
       │
       ▼
-   500 transactions
+500 transactions
+
 
 Surge Boundary
 α = 0.90
       │
       ▼
-   620 transactions
+620 transactions
 ```
 
-This allows operational teams to consider different demand scenarios when making staffing and inventory decisions.
-
----
-
-# Research & Documentation
-
-Additional project documentation is available in:
-
-```text
-research_paper.md
-```
-
-The research document contains the detailed methodology, modeling approach, feature engineering process, and experimental design.
-
-The stakeholder-facing operational overview is available in:
-
-```text
-executive_summary.md
-```
+This allows operational teams to consider multiple demand scenarios when making staffing and inventory decisions.
 
 ---
 
@@ -773,6 +783,30 @@ executive_summary.md
 
 ---
 
+# Research & Documentation
+
+Additional project documentation is available in:
+
+```text
+research_paper.md
+```
+
+The research document contains the detailed:
+
+- Methodology
+- Modeling approach
+- Feature engineering process
+- Experimental design
+- Evaluation methodology
+
+The stakeholder-facing operational overview is available in:
+
+```text
+executive_summary.md
+```
+
+---
+
 # Future Improvements
 
 Potential extensions include:
@@ -781,14 +815,15 @@ Potential extensions include:
 - Automated hyperparameter optimization
 - Store-specific model training
 - Product-level demand forecasting
-- Weather and holiday features
+- Weather features
+- Holiday features
 - Promotional-event features
 - Supplier lead-time modeling
 - Automated inventory optimization
 - Real-time POS ingestion
 - Cloud-based model retraining
 - Forecast monitoring and drift detection
-- Automated alerting for predicted stockout risk
+- Automated stockout-risk alerts
 
 ---
 
@@ -825,20 +860,22 @@ The **Afficionado Coffee Roasters Retail Demand & Surge Forecasting Engine** com
                  │                         │
                  │                  ┌──────┼──────┐
                  │                  │      │      │
-                 │                α=.10  α=.50  α=.90
+                 │                  ▼      ▼      ▼
+                 │               α = .10 α = .50 α = .90
                  │
-                 └────────────┬────────────┘
-                              │
-                              ▼
+                 └──────────────┬──────────────┘
+                                │
+                                ▼
                  ┌─────────────────────────┐
                  │ MODEL EVALUATION        │
+                 │                         │
                  │ MAE / RMSE / wMAPE      │
                  │ Peak Demand Error       │
                  └────────────┬────────────┘
                               │
                               ▼
                  ┌─────────────────────────┐
-                 │ STREAMLIT DASHBOARD      │
+                 │ STREAMLIT DASHBOARD     │
                  │                         │
                  │ Forecasts               │
                  │ Risk Bands              │
@@ -848,4 +885,8 @@ The **Afficionado Coffee Roasters Retail Demand & Surge Forecasting Engine** com
                  └─────────────────────────┘
 ```
 
-**Afficionado Coffee Roasters — Turning POS data into actionable demand intelligence.**
+---
+
+## Afficionado Coffee Roasters
+
+**Turning POS data into actionable demand intelligence.**
