@@ -1,36 +1,92 @@
-\# Executive Summary: Predictive Retail Intelligence
+\# Executive Summary: Predictive Retail Intelligence \& Demand Forecasting
 
-\*\*Organization:\*\* Afficionado Coffee Roasters  
+\*\*Target Entity:\*\* Executive Leadership \& Store Operations, Afficionado Coffee Roasters  
 
-\*\*Document Purpose:\*\* Executive \& Operational Briefing  
+\*\*Author:\*\* Yalamarthi Viswa Sri Harshith  
 
-
-
-\### Executive Overview
-
-Afficionado Coffee Roasters faced operational friction due to demand volatility across store branches. Over-preparing during slow hours caused retail waste, while under-preparing during morning spikes resulted in customer walkouts and strained staff. 
+\*\*Status:\*\* Completed \& Validated  
 
 
 
-To resolve this, we built a \*\*Machine Learning Demand Forecasting Framework\*\* that forecasts store-level revenue and transaction counts from 1 hour to 30 days ahead.
+\---
 
 
 
-\### Business Impact \& Key Metrics
+\### Executive Problem Overview
 
-\- \*\*93.4% Forecast Accuracy:\*\* Model variance remains under 7% across normal operating cycles.
+Afficionado Coffee Roasters operates high-volume urban and suburban retail units. Demand is heavily concentrated in morning (07:00–10:00) and midday (12:00–14:00) peaks. Operating without data-driven forecasting created two major operational failures:
 
-\- \*\*64% Reduction in Peak-Hour Miscalculation:\*\* Morning rush errors dropped from 22.1% under legacy heuristics to 7.8% using predictive gradient boosting.
+\- \*\*Under-preparation during surges:\*\* Stockouts and barista understaffing caused long queues, order abandonments, and lost revenue.
 
-\- \*\*Waste Reduction Estimate:\*\* Tightening daily prep schedules to match median demand is projected to reduce perishable discard costs by \*\*14% to 18%\*\*.
+\- \*\*Over-preparation during lulls:\*\* Overestimating afternoon footfall caused excessive spoilage of fresh milk, brewed coffee, and artisan pastries.
+
+
+
+\---
+
+
+
+\### Key Analytical Achievements \& Business Impact
+
+
+
+| Metric / Capability | Legacy Operational Heuristics | Proposed ML Framework | Operational Benefit |
+
+| :--- | :---: | :---: | :--- |
+
+| \*\*Forecast Accuracy\*\* | \~81.6% | \*\*93.4%\*\* | Reliable financial and revenue planning |
+
+| \*\*Peak Demand Error\*\* | 22.1% error | \*\*7.8% error\*\* | High rush-hour fulfillment without bottlenecks |
+
+| \*\*Inventory Spoilage\*\* | Baseline industry rate | \*\*Estimated 14%–18% reduction\*\* | Substantial weekly cost savings on perishables |
+
+| \*\*Uncertainty Quantification\*\* | None (Single static number) | \*\*10th to 90th Percentile Bands\*\* | Safe risk buffers for inventory stocking |
+
+
+
+\---
 
 
 
 \### Core Deliverables Provided
 
-1\. \*\*Interactive Streamlit Dashboard:\*\* Store managers can select their branch, view upcoming hourly heatmaps, toggle revenue vs. volume metrics, and adjust staffing to match anticipated customer volumes.
 
-2\. \*\*Quantile Risk Bounds:\*\* Operations teams receive lower-bound (10th percentile), expected (50th percentile), and peak-surge (90th percentile) estimates to plan inventory safety stock without guesswork.
 
-3\. \*\*Automated Data Pipeline:\*\* Cleanses raw point-of-sale logs, imputes missing operating intervals, and extracts predictive seasonal features.
+1\. \*\*Interactive Streamlit Operations Dashboard:\*\*
+
+&#x20;  - \*\*Store-Level Selector:\*\* Instant drill-down across individual locations (Astoria, Lower Manhattan, Hell's Kitchen).
+
+&#x20;  - \*\*Dual Target Forecasting:\*\* Toggle between \*\*Gross Revenue\*\* (financial budgeting) and \*\*Transaction Volume\*\* (barista labor scheduling).
+
+&#x20;  - \*\*Visual 80% Confidence Ribbons:\*\* Interactive timeline showing expected demand alongside lower-bound reserves and upper surge limits.
+
+&#x20;  - \*\*Diurnal Heatmaps:\*\* Day-of-week vs. hour-of-day intensity matrices for shift planning.
+
+
+
+2\. \*\*Continuous Feature Engineering Pipeline:\*\*
+
+&#x20;  - Automatically repairs raw POS logs by imputing non-trading hours, calculating trigonometric time cycles, and producing multi-period autoregressive rolling features.
+
+
+
+3\. \*\*Multi-Horizon Engine:\*\*
+
+&#x20;  - Supports operational short-term daily scheduling (1–7 days) and strategic supply chain ordering (14–30 days).
+
+
+
+\---
+
+
+
+\### Strategic Action Plan for Leadership
+
+
+
+1\. \*\*Implement Flexible Rostering:\*\* Stagger floor shifts into targeted 4-hour blocks aligned with the dashboard's hourly demand heatmaps, reducing labor costs during off-peak windows.
+
+2\. \*\*Adopt Asymmetric Prep Policies:\*\* Direct store managers to prep perishable dairy and pastries against the median ($\\alpha = 0.50$) forecast while holding dry goods at the 90th percentile ($\\alpha = 0.90$) surge buffer.
+
+3\. \*\*Logistics Integration:\*\* Connect the 7-day store volume forecasts directly to central roasting facility dispatchers to optimize batch roasting schedules and delivery routes.
 
